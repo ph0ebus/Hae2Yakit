@@ -1,0 +1,88 @@
+yakit.AutoInitYakit()
+
+# 镜像地址
+hae_yaml_url := cli.String("hae_yaml_url", cli.setDefault("https://raw.gitmirror.com/gh0stkey/HaE/refs/heads/master/src/main/resources/rules/Rules.yml"))
+cli.setRequired(true)
+cli.check()
+
+// 转换 HAE 规则为 YAKIT 规则
+func convertHaeToYakit(ruleGroup, name, rule, loaded, scope, color, index) {
+    if !loaded {
+        return make(map[string]var)
+    }
+
+    yakitDict = {
+        "ExtraTag": [f"{ruleGroup}/{name}"],
+        "VerboseName": name,
+        "Rule": rule,
+        "NoReplace": true,
+        "Color": color,
+        "Index": index,
+        "EnableForRequest": true,
+        "EnableForResponse": true,
+        "EnableForHeader": true,
+        "EnableForBody": true
+    }
+
+    // 根据 scope 调整字段
+    if scope.EndsWith("body") {
+        yakitDict["EnableForBody"] = true
+    } else if scope.EndsWith("header") {
+        yakitDict["EnableForHeader"] = true
+    }
+
+    if scope.StartsWith("request") {
+        yakitDict["EnableForRequest"] = true
+    } else if scope.StartsWith("response") {
+        yakitDict["EnableForResponse"] = true
+    }
+
+    return yakitDict
+}
+
+func yamlToJson(data) {
+    allDictList = []
+    
+    result = yaml.Unmarshal([]byte(data))~
+    println(result)
+
+    index = 0
+
+    // 遍历规则组
+    for group in get(result, "rules", []) {
+        println("-----------------hello-------------------")
+        ruleGroup = get(group, "group", [])
+        for rule in get(group, "rule", []) {
+            index += 1
+            name = get(rule, "name", "")
+            regex = get(rule, "regex", "")
+            regex = get(rule, "s_regex", "") ? get(rule, "s_regex", "") : regex
+            regex = get(rule, "f_regex", "") ? get(rule, "f_regex", "") : regex
+            loaded = get(rule, "loaded", false)
+            scope = get(rule, "scope", false)
+            color = get(rule, "color", false)
+
+            yakitDict = convertHaeToYakit(ruleGroup, name, regex, loaded, scope, color, index)
+            if yakitDict {
+                allDictList = append(allDictList, yakitDict)
+            }
+        }
+    }
+
+    // 转换为 JSON 并保存
+    yakitJson = json.dumps(allDictList)
+    println(yakitJson)
+    return yakitJson
+}
+
+rsp, _, err := poc.Get(hae_yaml_url, poc.https(true), poc.appendHeaders({"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"}))
+if err != nil {
+    yakit.Error("获取失败，错误原因:%v",err)
+}
+die(err)
+
+rspRaw = rsp.RawPacket
+headers, body = str.SplitHTTPHeadersAndBodyFromPacket(rspRaw)
+yakit.Text(yamlToJson(body))
+
+
