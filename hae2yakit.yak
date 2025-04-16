@@ -12,7 +12,7 @@ func convertHaeToYakit(ruleGroup, name, rule, loaded, scope, color, index) {
     }
 
     yakitDict = {
-        "ExtraTag": [f"{ruleGroup}/{name}"],
+        "ExtraTag": [str.f("%s/%s", ruleGroup, name)],
         "VerboseName": name,
         "Rule": rule,
         "NoReplace": true,
@@ -51,7 +51,7 @@ func yamlToJson(data) {
     // 遍历规则组
     for group in get(result, "rules", []) {
         println("-----------------hello-------------------")
-        ruleGroup = get(group, "group", [])
+        ruleGroup = get(group, "group", "")
         for rule in get(group, "rule", []) {
             index += 1
             name = get(rule, "name", "")
